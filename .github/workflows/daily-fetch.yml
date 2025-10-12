@@ -1,0 +1,44 @@
+name: 每日获取 GitHub 热门仓库
+
+on:
+  # 定时任务：每天 UTC 22:00（北京时间早上 6:00）
+  schedule:
+    - cron: '0 22 * * *'
+  
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  fetch-and-save:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: 安装依赖
+        run: npm ci
+      
+      - name: 获取 GitHub 热门仓库并保存到 Notion
+        run: node fetch-once.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+      
+      - name: 上传日志（如果失败）
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: error-logs
+          path: |
+            *.log
+          retention-days: 7
+
+

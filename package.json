@@ -1,0 +1,28 @@
+{
+  "name": "github-trending-notion",
+  "version": "1.0.0",
+  "description": "每天获取 GitHub 热门仓库并保存到 Notion",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node test.js",
+    "setup": "node setup-notion.js"
+  },
+  "keywords": [
+    "github",
+    "trending",
+    "notion",
+    "scheduler"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "axios": "^1.6.2",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.3.1"
+  }
+}
+
