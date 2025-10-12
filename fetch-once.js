@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { fetchGithubTrending, enrichRepositoriesWithReadme } from './src/githubService.js';
+import { fetchGithubTrendingAlternative, enrichRepositoriesWithReadme } from './src/githubService.js';
 import { enrichRepositoriesWithMarketing } from './src/aiService.js';
 import { saveToNotion } from './src/notionService.js';
 
@@ -15,8 +15,9 @@ async function fetchOnce() {
     console.log('时间:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
     console.log('');
     
-    // 步骤 1: 获取 GitHub 过去一天的热门仓库 Top 10
-    const repositories = await fetchGithubTrending(10);
+    // 步骤 1: 获取 GitHub 今日热榜 (Trending) Top 10
+    // 自动尝试多个数据源，确保能够获取到数据
+    const repositories = await fetchGithubTrendingAlternative(10);
     console.log(`✓ 成功获取 ${repositories.length} 个热门仓库\n`);
     
     // 步骤 2: 获取每个仓库的 README 内容

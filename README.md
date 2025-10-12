@@ -226,20 +226,25 @@ cron.schedule('0 6 * * *', async () => {
 });
 ```
 
-## 备用方案
+## 数据获取方案
 
 `src/githubService.js` 提供了两种获取数据的方法：
 
-1. **默认方法**: 使用 GitHub 官方 Search API（推荐）
-2. **备用方法**: 使用第三方 Trending API
+1. **默认方法**（当前使用）: `fetchGithubTrendingAlternative` - 使用第三方 Trending API，自动尝试多个数据源
+2. **备用方法**: `fetchGithubTrending` - 使用 GitHub 官方 Search API
 
-如需切换到备用方法，修改 `index.js`:
+当前配置使用默认方法（第三方 API），因为它更稳定且不受 GitHub API 速率限制影响。
+
+如需切换到官方 API，修改 `index.js` 和 `fetch-once.js`:
 
 ```javascript
 // 替换
-const repositories = await fetchGithubTrending(10);
-// 为
+import { fetchGithubTrendingAlternative, enrichRepositoriesWithReadme } from './src/githubService.js';
 const repositories = await fetchGithubTrendingAlternative(10);
+
+// 为
+import { fetchGithubTrending, enrichRepositoriesWithReadme } from './src/githubService.js';
+const repositories = await fetchGithubTrending(10);
 ```
 
 ## License

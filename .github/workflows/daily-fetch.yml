@@ -26,7 +26,7 @@ jobs:
         run: npm ci
       
       - name: 获取 GitHub 热门仓库并保存到 Notion
-        run: node index.js
+        run: node fetch-once.js
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
