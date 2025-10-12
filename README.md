@@ -1,6 +1,12 @@
 # GitHub 热门仓库追踪器
 
+[![Made with Cursor](https://img.shields.io/badge/Made%20with-Cursor-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMiAxMkwxMiAyMkwyMiAxMkwxMiAyWiIgZmlsbD0iI0ZGRkZGRiIvPgo8L3N2Zz4=)](https://cursor.com)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
+
 每天自动获取 GitHub 热门仓库并保存到 Notion 数据库。
+
+> 🤖 本项目完全使用 [Cursor](https://cursor.com) AI 编辑器开发
 
 ## 功能特点
 
