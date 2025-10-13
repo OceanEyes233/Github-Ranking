@@ -120,7 +120,7 @@ https://www.notion.so/workspace/DATABASE_ID?v=...
 
 将 `DATABASE_ID` 复制到 `.env` 文件的 `NOTION_DATABASE_ID`
 
-## 运行
+<!-- ## 运行
 
 ### 测试 GitHub API（推荐先运行测试）
 
@@ -130,7 +130,7 @@ https://www.notion.so/workspace/DATABASE_ID?v=...
 npm test
 ```
 
-这将显示两种方法获取的热门仓库列表，不会保存到 Notion。
+这将显示两种方法获取的热门仓库列表，不会保存到 Notion。 -->
 
 ### 设置 Notion 数据库（可选的辅助脚本）
 

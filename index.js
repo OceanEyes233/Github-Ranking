@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import dotenv from 'dotenv';
 import { fetchGithubTrendingAlternative, enrichRepositoriesWithReadme } from './src/githubService.js';
 import { enrichRepositoriesWithMarketing } from './src/aiService.js';
-import { saveToNotion } from './src/notionService.js';
+import { saveToNotion, filterNewRepositories } from './src/notionService.js';
 
 // 加载环境变量
 dotenv.config();
@@ -16,15 +16,38 @@ async function main() {
     console.log('时间:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
     console.log('');
     
-    // 步骤 1: 获取 GitHub 今日热榜 (Trending) Top 10
-    // 自动尝试多个数据源，确保能够获取到数据
-    const repositories = await fetchGithubTrendingAlternative(10);
-    console.log(`✓ 成功获取 ${repositories.length} 个热门仓库\n`);
+    // 步骤 1: 获取 GitHub 今日热榜 (Trending)
+    // 获取更多数据以便过滤后仍有足够的记录
+    let allRepositories = await fetchGithubTrendingAlternative(25);
+    console.log(`✓ 成功获取 ${allRepositories.length} 个热门仓库\n`);
     
-    // 步骤 2: 获取每个仓库的 README 内容
+    // 步骤 2: 过滤掉已存在的仓库（如果配置了 Notion）
+    let repositories = allRepositories;
+    if (process.env.NOTION_API_KEY && process.env.NOTION_DATABASE_ID) {
+      repositories = await filterNewRepositories(allRepositories);
+      
+      // 如果过滤后不足10条，就保留所有新仓库
+      if (repositories.length < 10) {
+        console.log(`⚠️  新仓库不足10个，将处理所有 ${repositories.length} 个新仓库`);
+      } else {
+        // 只取前10个
+        repositories = repositories.slice(0, 10);
+        console.log(`📝 选取前 10 个新仓库进行处理\n`);
+      }
+    } else {
+      // 如果没有配置 Notion，直接取前10个
+      repositories = repositories.slice(0, 10);
+    }
+    
+    if (repositories.length === 0) {
+      console.log('✅ 今日热榜的所有仓库都已存在，无需处理新数据');
+      return;
+    }
+    
+    // 步骤 3: 获取每个仓库的 README 内容
     const reposWithReadme = await enrichRepositoriesWithReadme(repositories);
     
-    // 步骤 3: 使用 AI 生成营销内容（基于 README 深度分析）
+    // 步骤 4: 使用 AI 生成营销内容（基于 README 深度分析）
     const enrichedRepositories = await enrichRepositoriesWithMarketing(reposWithReadme);
     
     // 步骤 4: 保存到 Notion

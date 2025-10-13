@@ -77,6 +77,77 @@ function validateAllRepositories(repositories) {
 }
 
 /**
+ * 获取 Notion 数据库中已存在的所有仓库名称
+ * @returns {Promise<Set<string>>} 已存在的仓库名称集合
+ */
+export async function getExistingRepositories() {
+  const notion = getNotionClient();
+  const databaseId = process.env.NOTION_DATABASE_ID;
+  
+  if (!databaseId) {
+    throw new Error('NOTION_DATABASE_ID 环境变量未设置');
+  }
+  
+  try {
+    const existingRepos = new Set();
+    let hasMore = true;
+    let startCursor = undefined;
+    
+    // 分页查询所有记录
+    while (hasMore) {
+      const response = await notion.databases.query({
+        database_id: databaseId,
+        start_cursor: startCursor,
+        page_size: 100 // 每次查询100条
+      });
+      
+      // 提取仓库名称
+      response.results.forEach(page => {
+        const nameProperty = page.properties['名称'];
+        if (nameProperty && nameProperty.title && nameProperty.title[0]) {
+          const repoName = nameProperty.title[0].text.content;
+          existingRepos.add(repoName);
+        }
+      });
+      
+      hasMore = response.has_more;
+      startCursor = response.next_cursor;
+    }
+    
+    return existingRepos;
+    
+  } catch (error) {
+    console.error('查询已存在仓库失败:', error.message);
+    // 如果查询失败，返回空集合（不影响后续流程）
+    return new Set();
+  }
+}
+
+/**
+ * 过滤掉已存在的仓库
+ * @param {Array} repositories - 新获取的仓库列表
+ * @returns {Promise<Array>} 过滤后的仓库列表（不包含已存在的）
+ */
+export async function filterNewRepositories(repositories) {
+  console.log('\n🔍 检查重复数据...');
+  
+  const existingRepos = await getExistingRepositories();
+  console.log(`📦 数据库中已有 ${existingRepos.size} 个仓库`);
+  
+  const newRepos = repositories.filter(repo => !existingRepos.has(repo.name));
+  
+  const duplicateCount = repositories.length - newRepos.length;
+  if (duplicateCount > 0) {
+    console.log(`✂️  过滤掉 ${duplicateCount} 个重复仓库`);
+    console.log(`✨ 剩余 ${newRepos.length} 个新仓库\n`);
+  } else {
+    console.log(`✨ 所有 ${newRepos.length} 个仓库都是新的\n`);
+  }
+  
+  return newRepos;
+}
+
+/**
  * 保存仓库数据到 Notion 数据库（带数据完整性验证）
  * @param {Array} repositories - 仓库列表（包含营销内容）
  */
