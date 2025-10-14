@@ -1,9 +1,9 @@
 name: 每日获取 GitHub 热门仓库
 
 on:
-  # 定时任务：每天 UTC 22:00（北京时间早上 6:00）
+  # 定时任务：每10分钟执行一次
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '*/10 * * * *'
   
   # 允许手动触发
   workflow_dispatch:
