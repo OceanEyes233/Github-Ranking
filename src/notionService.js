@@ -192,7 +192,11 @@ export async function saveToNotion(repositories) {
   
   console.log(`开始保存 ${validRepositories.length} 条完整记录到 Notion...\n`);
   
-  const today = new Date().toISOString().split('T')[0];
+  // 获取北京时间的日期（UTC+8）
+  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
+    .toISOString().split('T')[0];
+  console.log(`📅 保存日期: ${today} (北京时区)\n`);
+  
   let successCount = 0;
   let failCount = 0;
   
