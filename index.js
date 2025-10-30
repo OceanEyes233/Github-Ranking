@@ -5,7 +5,7 @@ import { main } from './src/main.js';
 console.log('=== GitHub 热门仓库追踪器启动 ===\n');
 await main({
   fetchCount: 100,  // 获取 100 个热门仓库
-  processCount: 20  // 处理最多 20 个新仓库
+  processCount: 10  // 处理最多 10 个新仓库
 });
 
 // 设置定时任务：每天早上 6:00 运行
