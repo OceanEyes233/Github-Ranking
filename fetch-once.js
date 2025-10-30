@@ -6,8 +6,8 @@ import { main } from './src/main.js';
 async function fetchOnce() {
   try {
     await main({
-      fetchCount: 25,   // 获取 25 个热门仓库
-      processCount: 10  // 处理最多 10 个新仓库
+      fetchCount: 100,  // 获取 100 个热门仓库
+      processCount: 20  // 处理最多 20 个新仓库
     });
     process.exit(0);
   } catch (error) {
