@@ -162,201 +162,66 @@ export async function enrichRepositoriesWithReadme(repositories) {
 }
 
 /**
- * 获取 GitHub Trending 仓库（使用多个可靠的 Trending API）
- * 自动尝试多个数据源，确保获取到真实的每日热榜数据
+ * 获取 GitHub Trending 仓库
+ * 使用 OSS Insight API (PingCAP 官方，稳定可靠)
  * @param {number} limit - 返回的仓库数量
- * @param {string} language - 编程语言筛选（可选）
+ * @param {string} language - 编程语言筛选（可选，默认 'All'）
+ * @param {string} period - 时间范围（past_24_hours, past_week, past_month）
  * @returns {Promise<Array>} 仓库列表
  */
-export async function fetchGithubTrendingAlternative(limit = 10, language = '') {
+export async function fetchGithubTrendingAlternative(limit = 10, language = 'All', period = 'past_24_hours') {
   try {
-    // 方案1: 尝试 OSS Insight API (PingCAP 官方，最可靠)
-    // 注意：OSS Insight 的 Trends API 目前可能还在开发中，如果失败会自动切换到其他方案
-    try {
-      console.log('尝试方案1: OSS Insight API...');
-      
-      // 使用经过验证的 OSS Insight Trends API 端点
-      const endpoint = 'https://api.ossinsight.io/v1/trends/repos';
-      
-      const response = await axios.get(endpoint, { 
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'GitHub-Trending-Notion-Bot',
-          'Accept': 'application/json'
-        }
-      });
-      
-      console.log('✓ 方案1成功: OSS Insight API');
-      
-      // OSS Insight API 返回格式: { type: "sql_endpoint", data: { rows: [...] } }
-      const data = response.data.data;
-      const rows = data.rows || [];
-      
-      if (rows.length === 0) {
-        throw new Error('OSS Insight 返回数据为空');
-      }
-      
-      const repositories = rows.slice(0, limit).map(row => ({
-        name: row.repo_name, // 格式: "owner/repo"
-        description: row.description || '暂无描述',
-        stars: parseInt(row.stars || 0), // 注意：stars 字段是字符串
-        starsToday: parseInt(row.stars || 0), // OSS Insight 返回的是总 stars，不是今日新增
-        language: row.primary_language || '未知',
-        url: `https://github.com/${row.repo_name}`,
-        author: row.repo_name.split('/')[0],
-        authorAvatar: '',
-        forks: parseInt(row.forks || 0),
-        defaultBranch: 'main'
-      }));
-      
-      return repositories;
-      
-    } catch (err1) {
-      console.log('方案1失败:', err1.message);
-      if (err1.response) {
-        console.log('  HTTP状态:', err1.response.status);
-        console.log('  错误详情:', JSON.stringify(err1.response.data).substring(0, 200));
-      }
-      console.log('  OSS Insight API 可能还在开发中，切换到备用方案...');
-      console.log('尝试方案2...');
-    }
-    
-    // 方案2: 尝试 gtrend.yapie.me (专业的 Trending API)
-    try {
-      console.log('尝试方案2: gtrend.yapie.me API...');
-      const url = language 
-        ? `https://gtrend.yapie.me/repositories?language=${language}&since=daily&spoken_language_code=`
-        : 'https://gtrend.yapie.me/repositories?since=daily&spoken_language_code=';
-      
-      const response = await axios.get(url, { 
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'GitHub-Trending-Notion-Bot'
-        }
-      });
-      
-      console.log('✓ 方案2成功: gtrend.yapie.me');
-      
-      const repositories = response.data.slice(0, limit).map(repo => ({
-        name: repo.author + '/' + repo.name,
-        description: repo.description || '暂无描述',
-        stars: repo.stars || 0,
-        starsToday: repo.starsSince || 0,
-        language: repo.language || '未知',
-        url: repo.url,
-        author: repo.author,
-        authorAvatar: repo.avatar || '',
-        forks: repo.forks || 0,
-        builtBy: repo.builtBy || [],
-        defaultBranch: 'main'
-      }));
-      
-      return repositories;
-    } catch (err2) {
-      console.log('方案2失败:', err2.message);
-      console.log('尝试方案3...');
-    }
-    
-    // 方案3: 尝试 ghapi.huchen.dev
-    try {
-      console.log('尝试方案3: ghapi.huchen.dev API...');
-      const url = language 
-        ? `https://ghapi.huchen.dev/repositories?language=${language}&since=daily`
-        : 'https://ghapi.huchen.dev/repositories?since=daily';
-      
-      const response = await axios.get(url, { timeout: 10000 });
-      
-      console.log('✓ 方案3成功: ghapi.huchen.dev');
-      
-      const repositories = response.data.slice(0, limit).map(repo => ({
-        name: repo.name,
-        description: repo.description || '暂无描述',
-        stars: parseInt(repo.stars.replace(/,/g, '')),
-        starsToday: parseInt(repo.starsSince.replace(/,/g, '')),
-        language: repo.language || '未知',
-        url: repo.url,
-        author: repo.author,
-        authorAvatar: repo.avatar,
-        forks: parseInt(repo.forks.replace(/,/g, '')),
-        builtBy: repo.builtBy,
-        defaultBranch: 'main'
-      }));
-      
-      return repositories;
-    } catch (err3) {
-      console.log('方案3失败:', err3.message);
-      console.log('尝试方案4...');
-    }
-    
-    // 方案4: 尝试 gh-trending-api
-    try {
-      console.log('尝试方案4: gh-trending-api.com API...');
-      const url = `https://gh-trending-api.com/repositories?since=daily&spoken_language_code=`;
-      const response = await axios.get(url, { timeout: 10000 });
-      
-      console.log('✓ 方案4成功: gh-trending-api.com');
-      
-      const repositories = response.data.slice(0, limit).map(repo => ({
-        name: repo.repositoryName,
-        description: repo.description || '暂无描述',
-        stars: repo.totalStars || 0,
-        starsToday: repo.stars || 0,
-        language: repo.language || '未知',
-        url: repo.url,
-        author: repo.username,
-        authorAvatar: '',
-        forks: repo.forks || 0,
-        defaultBranch: 'main'
-      }));
-      
-      return repositories;
-    } catch (err4) {
-      console.log('方案4失败:', err4.message);
-      console.log('尝试方案5（兜底方案）...');
-    }
-    
-    // 方案5: 使用 GitHub 官方 API 兜底（最近1-2天创建且star快速增长）
-    console.log('尝试方案5: GitHub 官方 API (兜底方案)...');
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 2); // 过去2天
-    const dateString = yesterday.toISOString().split('T')[0];
-    
-    const response = await axios.get('https://api.github.com/search/repositories', {
+    console.log(`正在从 OSS Insight API 获取数据... (language: ${language}, period: ${period})`);
+
+    // 使用新的 OSS Insight Trending API 端点
+    const endpoint = 'https://api.ossinsight.io/q/trending-repos';
+
+    const response = await axios.get(endpoint, {
       params: {
-        q: `created:>=${dateString} stars:>50`,
-        sort: 'stars',
-        order: 'desc',
-        per_page: limit
+        language: language,
+        period: period
       },
+      timeout: 10000,
       headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'GitHub-Trending-Notion-Bot',
-        ...(process.env.GITHUB_TOKEN && {
-          'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
-        })
-      },
-      timeout: 10000
+        'Accept': 'application/json',
+      }
     });
-    
-    console.log('✓ 方案5成功: GitHub 官方 API (过去2天创建的快速增长项目)');
-    
-    const repositories = response.data.items.map(repo => ({
-      name: repo.full_name,
-      description: repo.description || '暂无描述',
-      stars: repo.stargazers_count,
-      starsToday: repo.stargazers_count,
-      language: repo.language || '未知',
-      url: repo.html_url,
-      author: repo.owner.login,
-      authorAvatar: repo.owner.avatar_url,
-      forks: repo.forks_count,
-      defaultBranch: repo.default_branch || 'main'
-    }));
-    
+
+    console.log('✓ 成功: OSS Insight API');
+
+    // 新 API 返回格式: { data: [...] }
+    const data = response.data.data || [];
+
+    if (data.length === 0) {
+      throw new Error('OSS Insight 返回数据为空');
+    }
+
+    const repositories = data
+      .slice(0, limit)
+      .map(item => ({
+        name: item.repo_name,
+        description: item.description || '暂无描述',
+        stars: parseInt(item.stars || 0),
+        starsToday: parseInt(item.stars || 0),
+        language: item.language || '未知',
+        url: `https://github.com/${item.repo_name}`,
+        author: item.repo_name.split('/')[0],
+        authorAvatar: '',
+        forks: parseInt(item.forks || 0),
+        defaultBranch: 'main',
+        totalScore: parseFloat(item.total_score || 0)
+      }));
+
+    console.log(`  获取到 ${repositories.length} 个仓库`);
+
     return repositories;
-    
+
   } catch (error) {
     console.error('获取 GitHub Trending 数据失败:', error.message);
+    if (error.response) {
+      console.error('  HTTP状态:', error.response.status);
+      console.error('  错误详情:', JSON.stringify(error.response.data).substring(0, 200));
+    }
     throw error;
   }
 }

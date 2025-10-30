@@ -17,37 +17,34 @@ async function main() {
     console.log('');
     
     // 步骤 1: 获取 GitHub 今日热榜 (Trending)
-    // 获取更多数据以便过滤后仍有足够的记录
-    let allRepositories = await fetchGithubTrendingAlternative(25);
+    // 获取 100 条数据用于去重筛选
+    let allRepositories = await fetchGithubTrendingAlternative(100);
     console.log(`✓ 成功获取 ${allRepositories.length} 个热门仓库\n`);
-    
+
     // 步骤 2: 过滤掉已存在的仓库（如果配置了 Notion）
+    // 先过滤掉已存在的仓库，避免重复获取 README 和生成文案
     let repositories = allRepositories;
     if (process.env.NOTION_API_KEY && process.env.NOTION_DATABASE_ID) {
       repositories = await filterNewRepositories(allRepositories);
-      
-      // 如果过滤后不足10条，就保留所有新仓库
-      if (repositories.length < 10) {
-        console.log(`⚠️  新仓库不足10个，将处理所有 ${repositories.length} 个新仓库`);
-      } else {
-        // 只取前10个
-        repositories = repositories.slice(0, 10);
-        console.log(`📝 选取前 10 个新仓库进行处理\n`);
+
+      if (repositories.length === 0) {
+        console.log('✅ 今日热榜的所有仓库都已存在于 Notion 中，无需处理新数据');
+        return;
       }
+
+      // 取前 20 条新数据进行处理
+      const targetCount = Math.min(20, repositories.length);
+      repositories = repositories.slice(0, targetCount);
+      console.log(`📝 选取前 ${targetCount} 个新仓库进行处理\n`);
     } else {
-      // 如果没有配置 Notion，直接取前10个
-      repositories = repositories.slice(0, 10);
+      // 如果没有配置 Notion，直接取前 20 个
+      repositories = repositories.slice(0, 20);
     }
-    
-    if (repositories.length === 0) {
-      console.log('✅ 今日热榜的所有仓库都已存在，无需处理新数据');
-      return;
-    }
-    
-    // 步骤 3: 获取每个仓库的 README 内容
+
+    // 步骤 3: 获取每个仓库的 README 内容（只获取新仓库的 README）
     const reposWithReadme = await enrichRepositoriesWithReadme(repositories);
-    
-    // 步骤 4: 使用 AI 生成营销内容（基于 README 深度分析）
+
+    // 步骤 4: 使用 AI 生成营销内容（基于 README 深度分析，只为新仓库生成）
     const enrichedRepositories = await enrichRepositoriesWithMarketing(reposWithReadme);
     
     // 步骤 4: 保存到 Notion

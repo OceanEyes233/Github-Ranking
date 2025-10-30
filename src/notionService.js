@@ -77,30 +77,53 @@ function validateAllRepositories(repositories) {
 }
 
 /**
- * 获取 Notion 数据库中已存在的所有仓库名称
+ * 获取 Notion 数据库中已存在的仓库名称（优化版：限定时间范围）
+ * @param {number} daysBack - 查询最近N天的数据（默认30天）
  * @returns {Promise<Set<string>>} 已存在的仓库名称集合
  */
-export async function getExistingRepositories() {
+export async function getExistingRepositories(daysBack = 30) {
   const notion = getNotionClient();
   const databaseId = process.env.NOTION_DATABASE_ID;
-  
+
   if (!databaseId) {
     throw new Error('NOTION_DATABASE_ID 环境变量未设置');
   }
-  
+
   try {
     const existingRepos = new Set();
     let hasMore = true;
     let startCursor = undefined;
-    
-    // 分页查询所有记录
+    let queryCount = 0;
+
+    // 计算时间范围：最近N天
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+    const cutoffDateString = cutoffDate.toISOString().split('T')[0];
+
+    console.log(`  查询范围：最近 ${daysBack} 天（从 ${cutoffDateString} 开始）`);
+
+    // 分页查询指定时间范围内的记录
     while (hasMore) {
+      queryCount++;
+
       const response = await notion.databases.query({
         database_id: databaseId,
         start_cursor: startCursor,
-        page_size: 100 // 每次查询100条
+        page_size: 100, // 每次查询100条
+        filter: {
+          property: '日期',
+          date: {
+            on_or_after: cutoffDateString
+          }
+        },
+        sorts: [
+          {
+            property: '日期',
+            direction: 'descending'
+          }
+        ]
       });
-      
+
       // 提取仓库名称
       response.results.forEach(page => {
         const nameProperty = page.properties['名称'];
@@ -109,13 +132,15 @@ export async function getExistingRepositories() {
           existingRepos.add(repoName);
         }
       });
-      
+
       hasMore = response.has_more;
       startCursor = response.next_cursor;
     }
-    
+
+    console.log(`  查询完成：${queryCount} 次请求，找到 ${existingRepos.size} 个已存在的仓库`);
+
     return existingRepos;
-    
+
   } catch (error) {
     console.error('查询已存在仓库失败:', error.message);
     // 如果查询失败，返回空集合（不影响后续流程）
@@ -129,21 +154,26 @@ export async function getExistingRepositories() {
  * @returns {Promise<Array>} 过滤后的仓库列表（不包含已存在的）
  */
 export async function filterNewRepositories(repositories) {
-  console.log('\n🔍 检查重复数据...');
-  
+  console.log('🔍 检查 Notion 数据库中的已有数据...');
+
   const existingRepos = await getExistingRepositories();
   console.log(`📦 数据库中已有 ${existingRepos.size} 个仓库`);
-  
+
   const newRepos = repositories.filter(repo => !existingRepos.has(repo.name));
-  
+
   const duplicateCount = repositories.length - newRepos.length;
   if (duplicateCount > 0) {
-    console.log(`✂️  过滤掉 ${duplicateCount} 个重复仓库`);
-    console.log(`✨ 剩余 ${newRepos.length} 个新仓库\n`);
+    console.log(`✂️  过滤掉 ${duplicateCount} 个已存在的仓库`);
+
+    // 显示被过滤的仓库名称
+    const filteredRepos = repositories.filter(repo => existingRepos.has(repo.name));
+    console.log(`   已存在: ${filteredRepos.map(r => r.name).join(', ')}`);
+
+    console.log(`✨ 剩余 ${newRepos.length} 个新仓库需要处理\n`);
   } else {
     console.log(`✨ 所有 ${newRepos.length} 个仓库都是新的\n`);
   }
-  
+
   return newRepos;
 }
 
